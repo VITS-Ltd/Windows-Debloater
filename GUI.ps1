@@ -293,7 +293,7 @@ function Build-InstallTab {
     [System.Windows.Controls.Grid]::SetRow($Scroll, 1)
     $Grid.Children.Add($Scroll) | Out-Null
 
-    foreach ($app in $Config.install) {
+    foreach ($app in ($Config.install | Sort-Object name)) {
         $cb           = [System.Windows.Controls.CheckBox]::new()
         $cb.Content   = $app.name
         $cb.IsChecked = $false
@@ -346,38 +346,175 @@ function Build-UpdatesTab {
 
     $r0 = [System.Windows.Controls.RowDefinition]::new(); $r0.Height = [System.Windows.GridLength]::Auto
     $r1 = [System.Windows.Controls.RowDefinition]::new(); $r1.Height = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-    $r2 = [System.Windows.Controls.RowDefinition]::new(); $r2.Height = [System.Windows.GridLength]::Auto
+    $r2 = [System.Windows.Controls.RowDefinition]::new(); $r2.Height = [System.Windows.GridLength]::new(150, [System.Windows.GridUnitType]::Pixel)
+    $r3 = [System.Windows.Controls.RowDefinition]::new(); $r3.Height = [System.Windows.GridLength]::Auto
     $Grid.RowDefinitions.Add($r0)
     $Grid.RowDefinitions.Add($r1)
     $Grid.RowDefinitions.Add($r2)
+    $Grid.RowDefinitions.Add($r3)
 
     $Label = [System.Windows.Controls.TextBlock]::new()
-    $Label.Text       = "Runs 'winget upgrade --all' to update every installed application silently."
+    $Label.Text       = "Click 'Check for Updates' to scan for available upgrades, then tick what to install."
     $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#888888")
     $Label.FontSize   = 12
     $Label.Margin     = [System.Windows.Thickness]::new(16, 10, 16, 4)
     [System.Windows.Controls.Grid]::SetRow($Label, 0)
     $Grid.Children.Add($Label) | Out-Null
 
+    $Scroll = [System.Windows.Controls.ScrollViewer]::new()
+    $Scroll.VerticalScrollBarVisibility = [System.Windows.Controls.ScrollBarVisibility]::Auto
+    $Scroll.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1E1E1E")
+    $Scroll.Margin     = [System.Windows.Thickness]::new(16, 0, 16, 8)
+    $Stack = [System.Windows.Controls.StackPanel]::new()
+    $Stack.Margin = [System.Windows.Thickness]::new(8)
+    $Scroll.Content = $Stack
+    [System.Windows.Controls.Grid]::SetRow($Scroll, 1)
+    $Grid.Children.Add($Scroll) | Out-Null
+
     $LogBox = New-LogPanel
-    $LogBox.Margin = [System.Windows.Thickness]::new(16, 8, 16, 8)
-    [System.Windows.Controls.Grid]::SetRow($LogBox, 1)
+    $LogBox.Margin = [System.Windows.Thickness]::new(16, 0, 16, 8)
+    [System.Windows.Controls.Grid]::SetRow($LogBox, 2)
     $Grid.Children.Add($LogBox) | Out-Null
 
-    $RunBtn = [System.Windows.Controls.Button]::new()
-    $RunBtn.Content             = "Run Winget Updates"
-    $RunBtn.Margin              = [System.Windows.Thickness]::new(16, 0, 16, 16)
-    $RunBtn.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Left
-    [System.Windows.Controls.Grid]::SetRow($RunBtn, 2)
-    $Grid.Children.Add($RunBtn) | Out-Null
+    $BtnPanel = [System.Windows.Controls.StackPanel]::new()
+    $BtnPanel.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+    $BtnPanel.Margin      = [System.Windows.Thickness]::new(16, 0, 16, 16)
+    [System.Windows.Controls.Grid]::SetRow($BtnPanel, 3)
+    $Grid.Children.Add($BtnPanel) | Out-Null
 
-    $RunBtn.Add_Click({
+    $CheckBtn = [System.Windows.Controls.Button]::new()
+    $CheckBtn.Content = "Check for Updates"
+    $CheckBtn.Margin  = [System.Windows.Thickness]::new(0, 0, 8, 0)
+
+    $UpdateBtn = [System.Windows.Controls.Button]::new()
+    $UpdateBtn.Content   = "Install Selected"
+    $UpdateBtn.IsEnabled = $false
+
+    $BtnPanel.Children.Add($CheckBtn)  | Out-Null
+    $BtnPanel.Children.Add($UpdateBtn) | Out-Null
+
+    $script:_UpdStack     = $Stack
+    $script:_UpdLabel     = $Label
+    $script:_UpdCheckBtn  = $CheckBtn
+    $script:_UpdUpdateBtn = $UpdateBtn
+
+    $CheckBtn.Add_Click({
+        $Stack.Children.Clear()
+        $UpdateBtn.IsEnabled = $false
+        $Label.Text = "Scanning for available updates..."
+
+        $RS = [runspacefactory]::CreateRunspace()
+        $RS.ApartmentState = [System.Threading.ApartmentState]::STA
+        $RS.ThreadOptions  = [System.Management.Automation.Runspaces.PSThreadOptions]::ReuseThread
+        $RS.Open()
+
+        $PS = [powershell]::Create()
+        $PS.Runspace = $RS
+        $PS.AddScript({
+            param($Stack, $Label, $CheckBtn, $UpdateBtn)
+
+            # Parse winget upgrade output into structured list
+            $raw = & winget upgrade 2>&1 | Out-String
+            $lines = $raw -split "`n"
+
+            # Find the header line to locate column positions
+            $headerLine = $lines | Where-Object { $_ -match '^\s*Name\s+Id\s+Version\s+Available' } | Select-Object -First 1
+            $updates = [System.Collections.Generic.List[object]]::new()
+
+            if ($headerLine) {
+                $nameIdx      = $headerLine.IndexOf("Name")
+                $idIdx        = $headerLine.IndexOf("Id")
+                $versionIdx   = $headerLine.IndexOf("Version")
+                $availableIdx = $headerLine.IndexOf("Available")
+
+                $dataLines = $lines | Where-Object {
+                    $_.Length -gt $availableIdx -and
+                    $_ -notmatch '^\s*[-]+\s*$' -and
+                    $_ -notmatch '^\s*Name\s+Id' -and
+                    $_ -notmatch 'upgrades available' -and
+                    $_.Trim() -ne ''
+                }
+
+                foreach ($line in $dataLines) {
+                    if ($line.Length -gt $availableIdx) {
+                        $name      = $line.Substring($nameIdx, $idIdx - $nameIdx).Trim()
+                        $id        = $line.Substring($idIdx, $versionIdx - $idIdx).Trim()
+                        $available = $line.Substring($availableIdx).Trim() -replace '\s.*$'
+                        if ($name -and $id -and $available) {
+                            $updates.Add([PSCustomObject]@{ Name = $name; Id = $id; Available = $available })
+                        }
+                    }
+                }
+            }
+
+            $Stack.Dispatcher.Invoke([Action]{
+                $Stack.Children.Clear()
+                if ($updates.Count -eq 0) {
+                    $Label.Text = "All applications are up to date."
+                } else {
+                    $Label.Text = "$($updates.Count) update(s) available. Tick what to install."
+                    $UpdateBtn.IsEnabled = $true
+                    foreach ($u in ($updates | Sort-Object Name)) {
+                        $row = [System.Windows.Controls.Grid]::new()
+                        $row.Margin = [System.Windows.Thickness]::new(0, 3, 0, 3)
+                        $c0 = [System.Windows.Controls.ColumnDefinition]::new(); $c0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+                        $c1 = [System.Windows.Controls.ColumnDefinition]::new(); $c1.Width = [System.Windows.GridLength]::Auto
+                        $row.ColumnDefinitions.Add($c0)
+                        $row.ColumnDefinitions.Add($c1)
+
+                        $cb           = [System.Windows.Controls.CheckBox]::new()
+                        $cb.Content   = $u.Name
+                        $cb.IsChecked = $true
+                        $cb.Tag       = $u.Id
+                        $cb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F0F0F0")
+                        $cb.FontSize  = 13
+                        $cb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+                        [System.Windows.Controls.Grid]::SetColumn($cb, 0)
+
+                        $ver = [System.Windows.Controls.TextBlock]::new()
+                        $ver.Text       = $u.Available
+                        $ver.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0078D4")
+                        $ver.FontSize   = 11
+                        $ver.Margin     = [System.Windows.Thickness]::new(8, 0, 4, 0)
+                        $ver.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+                        [System.Windows.Controls.Grid]::SetColumn($ver, 1)
+
+                        $row.Children.Add($cb)  | Out-Null
+                        $row.Children.Add($ver) | Out-Null
+                        $Stack.Children.Add($row) | Out-Null
+                    }
+                }
+                $CheckBtn.IsEnabled = $true
+            })
+        }).AddArgument($script:_UpdStack).AddArgument($script:_UpdLabel).AddArgument($script:_UpdCheckBtn).AddArgument($script:_UpdUpdateBtn) | Out-Null
+
+        $CheckBtn.IsEnabled = $false
+        $PS.BeginInvoke() | Out-Null
+    })
+
+    $UpdateBtn.Add_Click({
+        $SelectedIds = @(
+            $Stack.Children | ForEach-Object {
+                $cb = $_.Children | Where-Object { $_ -is [System.Windows.Controls.CheckBox] -and $_.IsChecked }
+                if ($cb) { $cb.Tag }
+            }
+        )
+        if ($SelectedIds.Count -eq 0) {
+            Write-Log -LogBox $LogBox -Message "Nothing selected."
+            return
+        }
+
         $Work = {
-            "Running winget upgrade --all ..."
-            & winget upgrade --all --silent --accept-package-agreements --accept-source-agreements 2>&1
+            param($Ids)
+            foreach ($id in $Ids) {
+                "Updating: $id ..."
+                & winget upgrade --id $id --silent --accept-package-agreements --accept-source-agreements 2>&1
+                "  Done."
+            }
             "--- Updates complete ---"
         }
-        Invoke-InRunspace -LogBox $LogBox -Button $RunBtn -Work $Work
+
+        Invoke-InRunspace -LogBox $LogBox -Button $UpdateBtn -Work $Work -WorkArgs @(,$SelectedIds)
     })
 }
 
