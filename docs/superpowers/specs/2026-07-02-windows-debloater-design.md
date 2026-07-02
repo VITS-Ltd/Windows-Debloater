@@ -45,7 +45,7 @@ irm https://raw.githubusercontent.com/VITS-Ltd/Windows-Debloater/main/Run.ps1 | 
 - Machine hostname and current username
 - Small VITS branding
 
-**Four tabs:**
+**Five tabs:**
 
 ### Tab 1: Debloat
 
@@ -157,7 +157,22 @@ Each debloat entry has a `type`: `winget` (use `winget uninstall`) or `appx` (us
 
 ---
 
-### Tab 4: About
+### Tab 4: Tweaks
+
+Toggles for system configuration, all **unticked by default**. Tech consciously selects what to apply.
+
+| Tweak | Method |
+|---|---|
+| Disable Fast Startup | Registry: `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled = 0` |
+| Disable Windows tips/suggestions in Start Menu | Registry: `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager` |
+| Disable telemetry/data collection | Registry + scheduled task disable |
+| Disable Bing search in Start Menu | Registry: `HKCU\SOFTWARE\Policies\Microsoft\Windows\Explorer` `DisableSearchBoxSuggestions = 1` |
+| Set power plan to High Performance | `powercfg /setactive SCHEME_MIN` |
+| Set Chrome as default browser | Open `ms-settings:defaultapps` and show message: "Set Chrome as your default browser in the window that just opened." |
+
+"Apply Tweaks" button at the bottom with live log output.
+
+### Tab 5: About
 
 - Static info page
 - "VITS | Ravi Singh" credit
