@@ -147,24 +147,65 @@ function Build-DebloatTab {
     [System.Windows.Controls.Grid]::SetRow($RunBtn, 3)
     $Grid.Children.Add($RunBtn) | Out-Null
 
+    # Capture UI elements for use inside the runspace dispatcher
+    $script:_ScanLabel = $ScanLabel
+    $script:_RunBtn    = $RunBtn
+    $script:_Stack     = $Stack
+
     $Window.Add_ContentRendered({
-        $InstalledItems = Get-InstalledDebloatItems -DebloatList $Config.debloat
-        if ($InstalledItems.Count -eq 0) {
-            $ScanLabel.Text   = "No bloatware detected on this machine."
-        } else {
-            $ScanLabel.Text   = "$($InstalledItems.Count) item(s) found. Untick anything you want to keep."
-            $RunBtn.IsEnabled = $true
-            foreach ($item in $InstalledItems) {
-                $cb           = [System.Windows.Controls.CheckBox]::new()
-                $cb.Content   = $item.name
-                $cb.IsChecked = $true
-                $cb.Tag       = $item
-                $cb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F0F0F0")
-                $cb.FontSize  = 13
-                $cb.Margin    = [System.Windows.Thickness]::new(0, 4, 0, 4)
-                $Stack.Children.Add($cb) | Out-Null
+        $DebloatList = $Config.debloat
+
+        $RS = [runspacefactory]::CreateRunspace()
+        $RS.ApartmentState = [System.Threading.ApartmentState]::STA
+        $RS.ThreadOptions  = [System.Management.Automation.Runspaces.PSThreadOptions]::ReuseThread
+        $RS.Open()
+
+        $PS = [powershell]::Create()
+        $PS.Runspace = $RS
+
+        $PS.AddScript({
+            param($DebloatList, $ScanLabel, $RunBtn, $Stack)
+
+            $WingetOutput = (& winget list 2>&1) | Out-String
+            $AppxPackages  = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue |
+                             Select-Object -ExpandProperty Name
+
+            $installed = [System.Collections.Generic.List[object]]::new()
+            foreach ($item in $DebloatList) {
+                $found = $false
+                switch ($item.type) {
+                    "winget" { if ($WingetOutput -match [regex]::Escape($item.id)) { $found = $true } }
+                    "appx"   { if ($AppxPackages -contains $item.id)               { $found = $true } }
+                    "both"   {
+                        if (($WingetOutput -match [regex]::Escape($item.id)) -or
+                            ($AppxPackages -contains $item.id)) { $found = $true }
+                    }
+                }
+                if ($found) { $installed.Add($item) }
             }
-        }
+
+            $ScanLabel.Dispatcher.Invoke([Action]{
+                if ($installed.Count -eq 0) {
+                    $ScanLabel.Text = "No bloatware detected on this machine."
+                } else {
+                    $ScanLabel.Text   = "$($installed.Count) item(s) found. Untick anything you want to keep."
+                    $RunBtn.IsEnabled = $true
+                    foreach ($item in $installed) {
+                        $cb           = [System.Windows.Controls.CheckBox]::new()
+                        $cb.Content   = $item.name
+                        $cb.IsChecked = $true
+                        $cb.Tag       = $item
+                        $cb.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F0F0F0")
+                        $cb.FontSize  = 13
+                        $cb.Margin    = [System.Windows.Thickness]::new(0, 4, 0, 4)
+                        $Stack.Children.Add($cb) | Out-Null
+                    }
+                }
+            })
+
+        }).AddArgument($DebloatList).AddArgument($script:_ScanLabel).AddArgument($script:_RunBtn).AddArgument($script:_Stack) | Out-Null
+
+        $PS.BeginInvoke() | Out-Null
     })
 
     $RunBtn.Add_Click({
@@ -619,20 +660,28 @@ function Start-VITSDebloater {
 
     <Window.Resources>
         <Style TargetType="TabItem">
-            <Setter Property="Background" Value="#2D2D2D"/>
-            <Setter Property="Foreground" Value="#F0F0F0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="18,9"/>
             <Setter Property="FontSize" Value="13"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#0078D4"/>
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3E3E3E"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="#2D2D2D" BorderThickness="0" Padding="18,9" Margin="0,0,2,0">
+                            <TextBlock x:Name="TabText" Text="{TemplateBinding Header}" Foreground="#AAAAAA" FontSize="13" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#0078D4"/>
+                                <Setter TargetName="TabText" Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="TabText" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#3A3A3A"/>
+                                <Setter TargetName="TabText" Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="Button">
             <Setter Property="Background" Value="#0078D4"/>
@@ -673,20 +722,21 @@ function Start-VITSDebloater {
             </Grid>
         </Border>
 
-        <TabControl x:Name="MainTabControl" Background="#1E1E1E" BorderThickness="0" Padding="0">
-            <TabItem Header="  Debloat  ">
+        <TabControl x:Name="MainTabControl" Background="#1E1E1E" BorderThickness="0" Padding="0"
+                    TabStripPlacement="Top">
+            <TabItem Header="Debloat">
                 <Grid x:Name="DebloatGrid" Background="#1E1E1E"/>
             </TabItem>
-            <TabItem Header="  Install  ">
+            <TabItem Header="Install">
                 <Grid x:Name="InstallGrid" Background="#1E1E1E"/>
             </TabItem>
-            <TabItem Header="  Updates  ">
+            <TabItem Header="Updates">
                 <Grid x:Name="UpdatesGrid" Background="#1E1E1E"/>
             </TabItem>
-            <TabItem Header="  Tweaks  ">
+            <TabItem Header="Tweaks">
                 <Grid x:Name="TweaksGrid" Background="#1E1E1E"/>
             </TabItem>
-            <TabItem Header="  About  ">
+            <TabItem Header="About">
                 <Grid x:Name="AboutGrid" Background="#1E1E1E"/>
             </TabItem>
         </TabControl>
