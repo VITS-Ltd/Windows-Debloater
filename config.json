@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "debloat": [
     { "name": "Lenovo AI Now",                  "type": "winget", "id": "Lenovo.AIPlugin" },
     { "name": "Lenovo Smart Meeting",            "type": "winget", "id": "Lenovo.SmartMeeting" },
@@ -14,7 +14,18 @@
     { "name": "Microsoft Weather",               "type": "appx",   "id": "Microsoft.BingWeather" },
     { "name": "Microsoft News",                  "type": "appx",   "id": "Microsoft.BingNews" },
     { "name": "Microsoft Maps",                  "type": "appx",   "id": "Microsoft.WindowsMaps" },
-    { "name": "Microsoft Solitaire Collection",  "type": "appx",   "id": "Microsoft.MicrosoftSolitaireCollection" }
+    { "name": "Microsoft Solitaire Collection",  "type": "appx",   "id": "Microsoft.MicrosoftSolitaireCollection" },
+    { "name": "Microsoft Family Safety",         "type": "appx",   "id": "MicrosoftCorporationII.MicrosoftFamily" },
+    { "name": "Microsoft People",                "type": "appx",   "id": "Microsoft.People" },
+    { "name": "Microsoft To Do",                 "type": "appx",   "id": "Microsoft.Todos" },
+    { "name": "Paint 3D",                        "type": "appx",   "id": "Microsoft.MSPaint" },
+    { "name": "Mixed Reality Portal",            "type": "appx",   "id": "Microsoft.MixedReality.Portal" },
+    { "name": "Microsoft 3D Viewer",             "type": "appx",   "id": "Microsoft.Microsoft3DViewer" },
+    { "name": "Windows Feedback Hub",            "type": "appx",   "id": "Microsoft.WindowsFeedbackHub" },
+    { "name": "Microsoft Wallet",                "type": "appx",   "id": "Microsoft.Wallet" },
+    { "name": "Windows Widgets",                 "type": "appx",   "id": "MicrosoftWindows.Client.WebExperience" },
+    { "name": "McAfee Antivirus Trial",          "type": "winget", "id": "McAfee.McAfee" },
+    { "name": "Norton Antivirus Trial",          "type": "winget", "id": "NortonLifeLock.NortonSecurity" }
   ],
   "install": [
     { "name": "Google Chrome",           "id": "Google.Chrome" },

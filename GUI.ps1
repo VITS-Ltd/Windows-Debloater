@@ -188,11 +188,17 @@ function Build-DebloatTab {
                     } elseif ($item.type -eq "appx") {
                         Get-AppxPackage -AllUsers -Name $item.id -ErrorAction SilentlyContinue |
                             Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+                        Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue |
+                            Where-Object { $_.PackageName -like "*$($item.id)*" } |
+                            Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Out-Null
                         "  Done."
                     } elseif ($item.type -eq "both") {
                         & winget uninstall --id $item.id --silent --accept-source-agreements 2>&1
                         Get-AppxPackage -AllUsers -Name $item.id -ErrorAction SilentlyContinue |
                             Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+                        Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue |
+                            Where-Object { $_.PackageName -like "*$($item.id)*" } |
+                            Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Out-Null
                         "  Done."
                     }
                 } catch {
