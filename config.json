@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "debloat": [
+    { "name": "Lenovo AI Now",                  "type": "winget", "id": "Lenovo.AIPlugin" },
+    { "name": "Lenovo Smart Meeting",            "type": "winget", "id": "Lenovo.SmartMeeting" },
+    { "name": "Lenovo Speech",                   "type": "winget", "id": "Lenovo.Speech" },
+    { "name": "Xbox Game Bar",                   "type": "appx",   "id": "Microsoft.XboxGamingOverlay" },
+    { "name": "Xbox Game Pass",                  "type": "appx",   "id": "Microsoft.GamingApp" },
+    { "name": "Xbox App",                        "type": "appx",   "id": "Microsoft.XboxApp" },
+    { "name": "Xbox Identity Provider",          "type": "appx",   "id": "Microsoft.XboxIdentityProvider" },
+    { "name": "Microsoft Cortana",               "type": "appx",   "id": "Microsoft.549981C3F5F10" },
+    { "name": "Microsoft Clipchamp",             "type": "appx",   "id": "Clipchamp.Clipchamp" },
+    { "name": "Microsoft Tips",                  "type": "appx",   "id": "Microsoft.Getstarted" },
+    { "name": "Microsoft Weather",               "type": "appx",   "id": "Microsoft.BingWeather" },
+    { "name": "Microsoft News",                  "type": "appx",   "id": "Microsoft.BingNews" },
+    { "name": "Microsoft Maps",                  "type": "appx",   "id": "Microsoft.WindowsMaps" },
+    { "name": "Microsoft Solitaire Collection",  "type": "appx",   "id": "Microsoft.MicrosoftSolitaireCollection" }
+  ],
+  "install": [
+    { "name": "Google Chrome",           "id": "Google.Chrome" },
+    { "name": "Mozilla Firefox",         "id": "Mozilla.Firefox" },
+    { "name": "7-Zip",                   "id": "7zip.7zip" },
+    { "name": "Adobe Acrobat Reader",    "id": "Adobe.Acrobat.Reader.64-bit" },
+    { "name": "Notepad++",               "id": "Notepad++.Notepad++" },
+    { "name": "VLC",                     "id": "VideoLAN.VLC" },
+    { "name": "Microsoft 365",           "id": "Microsoft.Office" },
+    { "name": "Microsoft Teams",         "id": "Microsoft.Teams" },
+    { "name": "Bitwarden",               "id": "Bitwarden.Bitwarden" },
+    { "name": "LastPass",                "id": "LastPass.LastPass" },
+    { "name": "Dropbox",                 "id": "Dropbox.Dropbox" },
+    { "name": "Everything (Void Tools)", "id": "voidtools.Everything" },
+    { "name": "PowerShell (latest)",     "id": "Microsoft.PowerShell" },
+    { "name": "Python 3 (latest)",       "id": "Python.Python.3" },
+    { "name": "Signal",                  "id": "OpenWhisperSystems.Signal" },
+    { "name": "Windows Terminal",        "id": "Microsoft.WindowsTerminal" },
+    { "name": "Webex (Cisco)",           "id": "Cisco.WebexMeetings" },
+    { "name": "WhatsApp",                "id": "WhatsApp.WhatsApp" },
+    { "name": "VS Code",                 "id": "Microsoft.VisualStudioCode" },
+    { "name": "Power BI Desktop",        "id": "Microsoft.PowerBIDesktop" },
+    { "name": "Git for Windows",         "id": "Git.Git" }
+  ],
+  "tweaks": [
+    {
+      "name": "Disable Fast Startup",
+      "key": "DisableFastStartup",
+      "description": "Prevents Windows from using hybrid shutdown, ensuring a full restart each time."
+    },
+    {
+      "name": "Disable Windows Tips & Suggestions",
+      "key": "DisableTips",
+      "description": "Removes Microsoft promotional content from the Start Menu and lock screen."
+    },
+    {
+      "name": "Disable Telemetry & Data Collection",
+      "key": "DisableTelemetry",
+      "description": "Reduces data sent to Microsoft by setting telemetry to Security level and disabling related scheduled tasks."
+    },
+    {
+      "name": "Disable Bing Search in Start Menu",
+      "key": "DisableBingSearch",
+      "description": "Stops Start Menu searches from querying Bing."
+    },
+    {
+      "name": "Set Power Plan to High Performance",
+      "key": "HighPerformance",
+      "description": "Activates the High Performance power plan for maximum responsiveness."
+    },
+    {
+      "name": "Set Chrome as Default Browser",
+      "key": "ChromeDefault",
+      "description": "Opens Windows Default Apps settings so you can manually set Chrome as the default browser."
+    }
+  ]
+}
